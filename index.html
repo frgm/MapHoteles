@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CURA</title>
+        <meta charset="utf-8" />
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+        <script
+            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsZGN1hXTqjOfGrFjQjTj5vv8PWoKj1JM&callback=initMap&libraries=&v=weekly"
+            defer
+        ></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script lang="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.12.4/xlsx.core.min.js"></script>
+        <style type="text/css">
+            /* Always set the map height explicitly to define the size of the div
+            * element that contains the map. */
+            #map {
+            height: 100%;
+            }
+
+            /* Optional: Makes the sample page fill the window. */
+            html,
+            body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            }
+        </style>
+        <script>
+            let map;
+            markers = [];
+            function initMap() {
+                map = new google.maps.Map(document.getElementById("map"), {
+                  center: { lat: -31.910468, lng: -71.504261 },
+                  zoom: 8,
+                });   
+                //XLS
+                var url = "CURA proveedores_locales_rubro_alojamiento_28.12.20.xlsx";
+                var oReq = new XMLHttpRequest();
+                oReq.open("GET", url, true);
+                oReq.responseType = "arraybuffer";
+                oReq.onload = function(e) {
+                    var arraybuffer = oReq.response;
+                    var data = new Uint8Array(arraybuffer);
+                    var arr = new Array();
+                    for (var i = 0; i != data.length; ++i) {
+                        arr[i] = String.fromCharCode(data[i]);
+                    }
+                    var bstr = arr.join("");
+                    var cfb = XLSX.read(bstr, { type: 'binary' });
+                    cfb.SheetNames.forEach(function(sheetName, index) {
+                        var XL_row_object = XLSX.utils.sheet_to_row_object_array(cfb.Sheets[sheetName]);
+                        var json_object = JSON.stringify(XL_row_object);
+                        //console.log(json_object);
+                        sheets.push(JSON.parse(json_object))
+                    });
+                    const markerImgs = ["anillo_azul.png","anillo_amarillo.png","anillo_rojo.png"]
+                    //Markers            
+                    for (var i = 1; i<=5; i++){
+                        sheets[i].forEach( function(row){
+                            var tier = 0;
+                            if(row["CUPOS AUTORIZADOS"] > 21){
+                                tier = 2;
+                            }else if(row["CUPOS AUTORIZADOS"] > 11){
+                                tier = 1;
+                            }else{
+                                tier = 0;
+                            }
+                            var infoContent =  
+                                '<div id="content">' +
+                                '<div id="siteNotice">' +
+                                '</div>' +
+                                '<h1 id="firstHeading" class="firstHeading">'+row.PROVEEDOR+'</h1>' +
+                                '<div id="bodyContent">' +
+                                'Dirección: '+ row.DIRECCIÓN + '<br>' +
+                                'Cupos totales :'+ row["CUPOS AUTORIZADOS"] + '<br>' +
+                                'Cupos disponibles :'+ row["CUPOS DISPONIBLES"] + '<br>' +
+                                '</div>' +
+                                '<a href=http://www.timetoactivate.com/cura>CURA</a>' +
+                                '</div>';
+                            var infowindow = new google.maps.InfoWindow({
+                                content: infoContent,
+                            });
+                            var markerSizeMult = row["CUPOS DISPONIBLES"] / row["CUPOS AUTORIZADOS"];                       
+                            var mark = new google.maps.Marker({
+                                position: {lat:parseFloat(row.Latitud),lng:parseFloat(row.Longitud)},
+                                map: map,
+                                title: row.PROVEEDOR,
+                                icon: { 
+                                    url: markerImgs[tier], 
+                                    anchor:  new google.maps.Point(16, 16), 
+                                    scaledSize: new google.maps.Size(32, 32),
+                                    labelOrigin: new google.maps.Point(16, 32)
+                                }
+                            });
+                            //skip 0 size markers?
+                            new google.maps.Marker({
+                                position: {lat:parseFloat(row.Latitud),lng:parseFloat(row.Longitud)},
+                                map: map,
+                                title: row.PROVEEDOR,
+                                icon: { 
+                                    url: "circulo_gris.png", 
+                                    anchor:  new google.maps.Point(16 * markerSizeMult, 16 * markerSizeMult), //ajustar por tamanio 
+                                    scaledSize: new google.maps.Size(32 * markerSizeMult, 32 * markerSizeMult)
+                                }
+                            });
+                            //Evento infobox
+                            google.maps.event.addListener(mark,'click',function(){
+                                infowindow.open(map,this)
+                            });
+                            markers.push(mark)
+                        });
+                    }
+                    //Evento zoom
+                    labelVis = false;
+                    google.maps.event.addListener(map,'zoom_changed',function () {
+                        if (map.getZoom() >= 16 && labelVis==false){
+                                for (i = 0; i < markers.length; i++) { 
+                                    markers[i].setLabel(markers[i].title)
+                                }
+                                labelVis = true;
+                        }
+                        if (map.getZoom() < 16 && labelVis==true){
+                                for (i = 0; i < markers.length; i++) { 
+                                    markers[i].setLabel("")
+                                }
+                                labelVis = false;
+                        }
+                    });
+                    //End Markers
+            }
+            sheets = []
+            oReq.send();        
+            }
+        </script>
+    </head>
+    <body>
+    <div id="map"></div>
+    </body>
+</html>
