@@ -34,7 +34,7 @@
                   zoom: 8,
                 });   
                 //XLS
-                var url = "CURA proveedores_locales_rubro_alojamiento_28.12.20.xlsx";
+                var url = "proveedores_locales_rubro_alojamiento_28.12.20 + conflictos.xlsx";
                 var oReq = new XMLHttpRequest();
                 oReq.open("GET", url, true);
                 oReq.responseType = "arraybuffer";
@@ -127,6 +127,21 @@
                         }
                     });
                     //End Markers
+                    sheets[7].forEach( function(row){ //U 8 para conflictos predecidos
+                        new google.maps.Marker({
+                            position: {lat:parseFloat(row.Latitud),lng:parseFloat(row.Longitud)},
+                            map: map,
+                            label: row.ID,
+                            icon: { url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"}
+                        });
+                        new google.maps.Circle({
+                            center: {lat:parseFloat(row.Latitud),lng:parseFloat(row.Longitud)},
+                            map: map,
+                            radius: 500,
+                            fillColor: "#FFAA00",
+                            fillOpacity: 0.35,
+                        });
+                    });
             }
             sheets = []
             oReq.send();        
